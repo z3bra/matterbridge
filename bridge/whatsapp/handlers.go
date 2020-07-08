@@ -95,7 +95,7 @@ func (b *Bwhatsapp) HandleTextMessage(message whatsapp.TextMessage) {
 
 			// mentions comes as telephone numbers and we don't want to expose it to other bridges
 			// replace it with something more meaninful to others
-			mention := b.getSenderNotify(numberAndSuffix[0] + "@s.whatsapp.net")
+			mention := b.getSenderName(numberAndSuffix[0] + "@s.whatsapp.net")
 			if mention == "" {
 				mention = "someone"
 			}

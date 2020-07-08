@@ -110,13 +110,6 @@ func (b *Bwhatsapp) getSenderName(senderJid string) string {
 	return ""
 }
 
-func (b *Bwhatsapp) getSenderNotify(senderJid string) string {
-	if sender, exists := b.users[senderJid]; exists {
-		return sender.Notify
-	}
-	return ""
-}
-
 func (b *Bwhatsapp) GetProfilePicThumb(jid string) (*ProfilePicInfo, error) {
 	data, err := b.conn.GetProfilePicThumb(jid)
 	if err != nil {
