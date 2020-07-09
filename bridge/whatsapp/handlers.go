@@ -195,6 +195,134 @@ func (b *Bwhatsapp) HandleImageMessage(message whatsapp.ImageMessage) {
 	b.Remote <- rmsg
 }
 
+func (b *Bwhatsapp) HandleVideoMessage(message whatsapp.VideoMessage) {
+	if message.Info.FromMe { // || !strings.Contains(strings.ToLower(message.Text), "@echo") {
+		return
+	}
+
+	// whatsapp sends last messages to show context , cut them
+	if message.Info.Timestamp < b.startedAt {
+		return
+	}
+
+	messageTime := time.Unix(int64(message.Info.Timestamp), 0) // TODO check how behaves between timezones
+	groupJID := message.Info.RemoteJid
+
+	senderJID := message.Info.SenderJid
+
+	// translate sender's Jid to the nicest username we can get
+	senderName := b.getSenderName(senderJID)
+	if senderName == "" {
+		senderName = "Someone" // don't expose telephone number
+	}
+
+	b.Log.Debugf("<= Sending message from %s on %s to gateway", senderJID, b.Account)
+	rmsg := config.Message{
+		UserID:    senderJID,
+		Username:  senderName,
+		Timestamp: messageTime,
+		Channel:   groupJID,
+		Account:   b.Account,
+		Protocol:  b.Protocol,
+		Extra:     make(map[string][]interface{}),
+		//  ParentID: TODO,      // TODO handle thread replies  // map from Info.QuotedMessageID string
+		//  Event     string    `json:"event"`
+		//  Gateway   string     // will be added during message processing
+		ID: message.Info.Id}
+
+	if avatarURL, exists := b.userAvatars[senderJID]; exists {
+		rmsg.Avatar = avatarURL
+	}
+
+	// Download and unencrypt content
+	data, err := message.Download()
+	if err != nil {
+		b.Log.Errorf("%v", err)
+		return
+	}
+
+	// Get file extension by mimetype
+	fileExt, err := mime.ExtensionsByType(message.Type)
+	if err != nil {
+		b.Log.Errorf("%v", err)
+		return
+	}
+
+	filename := fmt.Sprintf("%v%v", message.Info.Id, fileExt[0])
+
+	b.Log.Debugf("<= Video downloaded and unencrypted")
+
+	// Move file to bridge storage
+	helper.HandleDownloadData(b.Log, &rmsg, filename, message.Caption, "", &data, b.General)
+
+	b.Log.Debugf("<= Video Message is %#v", rmsg)
+	b.Remote <- rmsg
+}
+
+func (b *Bwhatsapp) HandleAudioMessage(message whatsapp.AudioMessage) {
+	if message.Info.FromMe {
+		return
+	}
+
+	// whatsapp sends last messages to show context , cut them
+	if message.Info.Timestamp < b.startedAt {
+		return
+	}
+
+	messageTime := time.Unix(int64(message.Info.Timestamp), 0) // TODO check how behaves between timezones
+	groupJID := message.Info.RemoteJid
+
+	senderJID := message.Info.SenderJid
+
+	// translate sender's Jid to the nicest username we can get
+	senderName := b.getSenderName(senderJID)
+	if senderName == "" {
+		senderName = "Someone" // don't expose telephone number
+	}
+
+	b.Log.Debugf("<= Sending message from %s on %s to gateway", senderJID, b.Account)
+	rmsg := config.Message{
+		UserID:    senderJID,
+		Username:  senderName,
+		Timestamp: messageTime,
+		Channel:   groupJID,
+		Account:   b.Account,
+		Protocol:  b.Protocol,
+		Extra:     make(map[string][]interface{}),
+		//  ParentID: TODO,      // TODO handle thread replies  // map from Info.QuotedMessageID string
+		//  Event     string    `json:"event"`
+		//  Gateway   string     // will be added during message processing
+		ID: message.Info.Id}
+
+	if avatarURL, exists := b.userAvatars[senderJID]; exists {
+		rmsg.Avatar = avatarURL
+	}
+
+	// Download and unencrypt content
+	data, err := message.Download()
+	if err != nil {
+		b.Log.Errorf("%v", err)
+		return
+	}
+
+	// Get file extension by mimetype
+	fileExt, err := mime.ExtensionsByType(message.Type)
+	if err != nil {
+		b.Log.Errorf("%v", err)
+		return
+	}
+
+	filename := fmt.Sprintf("%v%v", message.Info.Id, fileExt[0])
+
+	b.Log.Debugf("<= Audio file downloaded and unencrypted")
+
+	// Move file to bridge storage
+	helper.HandleDownloadData(b.Log, &rmsg, filename, "", "", &data, b.General)
+
+	b.Log.Debugf("<= Audio Message is %#v", rmsg)
+	b.Remote <- rmsg
+}
+
 //func (b *Bwhatsapp) HandleVideoMessage(message whatsapp.VideoMessage) {
 //	fmt.Println(message) // TODO implement
 //}
